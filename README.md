@@ -1,2 +1,0 @@
-# WeexiOSSDK
-Weex iOS SDK
