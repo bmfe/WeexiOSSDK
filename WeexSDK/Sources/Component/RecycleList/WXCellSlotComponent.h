@@ -18,32 +18,15 @@
  */
 
 #import <Foundation/Foundation.h>
-
 #import "WXComponent.h"
-#import "WXComponent_internal.h"
-#import "NSTimer+Weex.h"
 
-@interface WXAnimationLayoutInfo : NSObject
+@interface WXCellSlotComponent : WXComponent
 
-@property (nonatomic, strong) NSString *propertyName;
-@property (nonatomic, strong) id fromValue;
-@property (nonatomic, strong) id toValue;
+@property (nonatomic, strong) NSString *templateType;
 
-@end
+- (void)updateCellData:(NSDictionary *)data;
 
+- (void)triggerLayout;
 
-@interface WXAnimationLayout : NSObject
-
-@property (nonatomic,strong) NSTimer *updateStyleTimer;
-@property (nonatomic,strong) WXComponent *targetComponent;
-@property (nonatomic,strong) NSDate *animationStartDate;
-@property (nonatomic,strong) WXAnimationLayoutInfo *widthInfo;
-@property (nonatomic,strong) WXAnimationLayoutInfo *heightInfo;
-@property (nonatomic,assign) double animationDuration;
-@property (nonatomic,assign) double animationDelay;
-@property (nonatomic,strong) NSDictionary *needUpdateStyles;
-@property (nonatomic, weak) WXSDKInstance *weexInstance;
-
-- (void)layoutForAnimation;
 
 @end
