@@ -27,6 +27,7 @@
 #import "WXComponentManager.h"
 #import "WXThreadSafeMutableDictionary.h"
 #import "WXAppConfiguration.h"
+#import "WXTracingManager.h"
 
 NSString *const kStartKey = @"start";
 NSString *const kEndKey = @"end";
@@ -104,6 +105,13 @@ static WXThreadSafeMutableDictionary *globalPerformanceDict;
     if (instance.userInfo[@"weex_bundlejs_requestType"]) {
         commitDict[@"requestType"] = instance.userInfo[@"weex_bundlejs_requestType"];
     }
+    if (instance.userInfo[CACHEPROCESSTIME]) {
+        commitDict[CACHEPROCESSTIME] = instance.userInfo[CACHEPROCESSTIME];
+    }
+    
+    if (instance.userInfo[CACHERATIO]) {
+        commitDict[CACHERATIO] = instance.userInfo[CACHERATIO];
+    }
     if (instance.userInfo[WXCUSTOMMONITORINFO]) {
         if([instance.userInfo[WXCUSTOMMONITORINFO] isKindOfClass:[NSDictionary class]]) {
             commitDict[WXCUSTOMMONITORINFO] = [WXUtility JSONString:instance.userInfo[WXCUSTOMMONITORINFO]];
@@ -131,6 +139,7 @@ static WXThreadSafeMutableDictionary *globalPerformanceDict;
                           @(WXPTFrameworkExecute) : JSLIBINITTIME,
                           @(WXPTJSDownload) : NETWORKTIME,
                           @(WXPTJSCreateInstance) : COMMUNICATETIME,
+                          @(WXFirstScreenJSFExecuteTime) : FIRSETSCREENJSFEXECUTETIME,
                           @(WXPTFirstScreenRender) : SCREENRENDERTIME,
                           @(WXPTAllRender) : TOTALTIME,
                           @(WXPTBundleSize) : JSTEMPLATESIZE
@@ -156,12 +165,15 @@ static WXThreadSafeMutableDictionary *globalPerformanceDict;
         commitDict[commitKey] = @([end integerValue] - [start integerValue]);
     }
     
+    commitDict[@"instanceId"] = [instance instanceId]?:@"";
+    
     id<WXAppMonitorProtocol> appMonitor = [WXHandlerFactory handlerForProtocol:@protocol(WXAppMonitorProtocol)];
     if (appMonitor && [appMonitor respondsToSelector:@selector(commitAppMonitorArgs:)]){
         [appMonitor commitAppMonitorArgs:commitDict];
     }
     
     [self printPerformance:commitDict];
+    [WXTracingManager commitTracingSummaryInfo:commitDict withInstanceId:instance.instanceId];
 }
 
 + (NSMutableDictionary *)performanceDictForInstance:(WXSDKInstance *)instance

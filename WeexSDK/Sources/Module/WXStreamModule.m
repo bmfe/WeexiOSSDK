@@ -24,6 +24,7 @@
 #import "WXNetworkProtocol.h"
 #import "WXURLRewriteProtocol.h"
 #import "WXResourceLoader.h"
+#import "WXSDKEngine.h"
 
 @implementation WXStreamModule
 
@@ -31,6 +32,7 @@
 
 WX_EXPORT_METHOD(@selector(sendHttp:callback:))
 WX_EXPORT_METHOD(@selector(fetch:callback:progressCallback:))
+WX_EXPORT_METHOD(@selector(fetchWithArrayBuffer:options:callback:progressCallback:))
 
 - (void)fetch:(NSDictionary *)options callback:(WXModuleCallback)callback progressCallback:(WXModuleKeepAliveCallback)progressCallback
 {
@@ -83,24 +85,32 @@ WX_EXPORT_METHOD(@selector(fetch:callback:progressCallback:))
     };
     
     loader.onFinished = ^(const WXResourceResponse * response, NSData *data) {
-        if (weakSelf) {
-            [weakSelf _loadFinishWithResponse:[response copy] data:data callbackRsp:callbackRsp];
-            if (callback) {
-                callback(callbackRsp);
-            }
+        if (weakSelf && callback) {
+             [weakSelf _loadFinishWithResponse:[response copy] data:data callbackRsp:callbackRsp];
+             callback(callbackRsp);
         }
     };
     
     loader.onFailed = ^(NSError *error) {
-        if (weakSelf) {
+        if (weakSelf && callback) {
             [weakSelf _loadFailedWithError:error callbackRsp:callbackRsp];
-            if (callback) {
-                callback(callbackRsp);
-            }
+            callback(callbackRsp);
         }
     };
     
     [loader start];
+}
+
+- (void)fetchWithArrayBuffer:(id)arrayBuffer options:(NSDictionary *)options callback:(WXModuleCallback)callback progressCallback:(WXModuleKeepAliveCallback)progressCallback
+{
+    NSMutableDictionary *newOptions = [options mutableCopy];
+    if([arrayBuffer isKindOfClass:[NSDictionary class]]){
+        NSData *sendData = [WXUtility base64DictToData:arrayBuffer];
+        if(sendData){
+            [newOptions setObject:sendData forKey:@"body"];
+        }
+    }
+    [self fetch:newOptions callback:callback progressCallback:progressCallback];
 }
 
 - (WXResourceRequest*)_buildRequestWithOptions:(NSDictionary*)options callbackRsp:(NSMutableDictionary*)callbackRsp
@@ -254,7 +264,7 @@ WX_EXPORT_METHOD(@selector(fetch:callback:progressCallback:))
     NSError * error = nil;
     id jsonObj = [WXUtility JSONObject:data error:&error];
     if (error) {
-        WXLogError(@"%@", [error description]);
+        WXLogDebug(@"%@", [error description]);
     }
     return jsonObj;
 }
