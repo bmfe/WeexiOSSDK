@@ -58,7 +58,7 @@
     [self registerModule:@"storage" withClass:NSClassFromString(@"WXStorageModule")];
     [self registerModule:@"clipboard" withClass:NSClassFromString(@"WXClipboardModule")];
     [self registerModule:@"globalEvent" withClass:NSClassFromString(@"WXGlobalEventModule")];
-//    [self registerModule:@"canvas" withClass:NSClassFromString(@"WXCanvasModule")];
+    [self registerModule:@"canvas" withClass:NSClassFromString(@"WXCanvasModule")];
     [self registerModule:@"picker" withClass:NSClassFromString(@"WXPickerModule")];
     [self registerModule:@"meta" withClass:NSClassFromString(@"WXMetaModule")];
     [self registerModule:@"webSocket" withClass:NSClassFromString(@"WXWebSocketModule")];
@@ -108,7 +108,7 @@
     [self registerComponent:@"loading-indicator" withClass:NSClassFromString(@"WXLoadingIndicator")];
     [self registerComponent:@"refresh" withClass:NSClassFromString(@"WXRefreshComponent")];
     [self registerComponent:@"textarea" withClass:NSClassFromString(@"WXTextAreaComponent")];
-//    [self registerComponent:@"canvas" withClass:NSClassFromString(@"WXCanvasComponent")];
+	[self registerComponent:@"canvas" withClass:NSClassFromString(@"WXCanvasComponent")];
     [self registerComponent:@"slider-neighbor" withClass:NSClassFromString(@"WXSliderNeighborComponent")];
     
     [self registerComponent:@"recycle-list" withClass:NSClassFromString(@"WXRecycleListComponent")];
