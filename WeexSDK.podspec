@@ -34,8 +34,6 @@ Pod::Spec.new do |s|
   s.requires_arc = true
   s.prefix_header_file = 'WeexSDK/Sources/Supporting Files/WeexSDK-Prefix.pch'
 
-#  s.xcconfig = { "GCC_PREPROCESSOR_DEFINITIONS" => '$(inherited) DEBUG=1' }
-
   s.xcconfig = { "OTHER_LINK_FLAG" => '$(inherited) -ObjC'}
 
   s.frameworks = 'CoreMedia','MediaPlayer','AVFoundation','AVKit','JavaScriptCore', 'GLKit', 'OpenGLES', 'CoreText', 'QuartzCore', 'CoreGraphics'
