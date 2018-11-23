@@ -30,6 +30,7 @@
 #import "WXSDKInstance_private.h"
 #import "WXRefreshComponent.h"
 #import "WXLoadingComponent.h"
+#import "WXScrollerComponent+Layout.h"
 
 @interface WXTableView : UITableView
 
@@ -40,6 +41,16 @@
 + (BOOL)requiresConstraintBasedLayout
 {
     return NO;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+    if ([(id <WXScrollerProtocol>) self.wx_component respondsToSelector:@selector(requestGestureShouldStopPropagation:shouldReceiveTouch:)]) {
+        return [(id <WXScrollerProtocol>) self.wx_component requestGestureShouldStopPropagation:gestureRecognizer shouldReceiveTouch:touch];
+    }
+    else{
+        return YES;
+    }
 }
 
 - (void)layoutSubviews
@@ -119,6 +130,8 @@
     // Only accessed on main thread
     NSMutableArray<WXSectionComponent *> *_completedSections;
     NSUInteger _previousLoadMoreRowNumber;
+    // insert & reload & batch
+    NSString *_updataType;
     
     BOOL _isUpdating;
     NSMutableArray<void(^)(void)> *_updates;
@@ -131,6 +144,7 @@
         _sections = [NSMutableArray array];
         _completedSections = [NSMutableArray array];
         _reloadInterval = attributes[@"reloadInterval"] ? [WXConvert CGFloat:attributes[@"reloadInterval"]]/1000 : 0;
+        _updataType = [WXConvert NSString:attributes[@"updataType"]]?:@"insert";
         [self fixFlicker];
     }
     
@@ -181,6 +195,9 @@
     
     if (attributes[@"reloadInterval"]) {
         _reloadInterval = [WXConvert CGFloat:attributes[@"reloadInterval"]] / 1000;
+    }
+    if (attributes[@"updataType"]) {
+        _updataType = [WXConvert NSString:attributes[@"updataType"]];
     }
 }
 
@@ -334,7 +351,7 @@
 
 - (float)headerWidthForLayout:(WXHeaderComponent *)cell
 {
-    return self.scrollerCSSNode->style.dimensions[CSS_WIDTH];
+        return self.flexScrollerCSSNode->getStyleWidth();
 }
 
 - (void)headerDidLayout:(WXHeaderComponent *)header
@@ -389,7 +406,7 @@
     
     [self.weexInstance.componentManager _addUITask:^{
         if (isDeleteSection) {
-            WXLogDebug(@"delete section:%zd", headerIndex);
+            WXLogDebug(@"delete section:%lu", (unsigned long)headerIndex);
             [_completedSections removeObjectAtIndex:headerIndex];
         }
         
@@ -398,7 +415,7 @@
         }
         
         if (completedReloadSection) {
-            WXLogDebug(@"Reload section:%zd", reloadIndex);
+            WXLogDebug(@"Reload section:%lu", (unsigned long)reloadIndex);
             _completedSections[reloadIndex] = completedReloadSection;
         }
         
@@ -422,7 +439,7 @@
 
 - (float)containerWidthForLayout:(WXCellComponent *)cell
 {
-    return self.scrollerCSSNode->style.dimensions[CSS_WIDTH];
+        return self.flexScrollerCSSNode->getStyleWidth();
 }
 
 - (void)cellDidRemove:(WXCellComponent *)cell
@@ -430,6 +447,10 @@
     WXAssertComponentThread();
     
     NSIndexPath *indexPath = [self indexPathForCell:cell sections:_sections];
+    if(!indexPath){
+        //protect when cell not exist in sections
+        return;
+    }
     [self removeCellForIndexPath:indexPath withSections:_sections];
     
     [self.weexInstance.componentManager _addUITask:^{
@@ -689,6 +710,10 @@
     
     WXCellComponent *cell = [self cellForIndexPath:indexPath];
     
+    if (cell.zIndex) {
+        cellView.layer.zPosition = [WXConvert CGFloat:cell.zIndex];
+    }
+    
     if (!cell) {
         return cellView;
     }
@@ -899,9 +924,13 @@
 - (void)_insertTableViewCellAtIndexPath:(NSIndexPath *)indexPath keepScrollPosition:(BOOL)keepScrollPosition animation:(UITableViewRowAnimation)animation
 {
     [self _performUpdates:^{
-        [_tableView insertRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:animation];
+        if ([_updataType  isEqual: @"reload"]) {
+            [_tableView reloadData];
+        } else {
+            [_tableView insertRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:animation];
+        }
     } withKeepScrollPosition:keepScrollPosition adjustmentBlock:^CGFloat(NSIndexPath *top) {
-        if ([indexPath compare:top] <= 0) {
+        if (([indexPath compare:top] <= 0) || [_updataType  isEqual: @"reload"]) {
             return [self tableView:_tableView heightForRowAtIndexPath:indexPath];
         } else {
             return 0.0;

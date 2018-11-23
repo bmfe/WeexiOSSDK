@@ -19,6 +19,8 @@
 
 #import <Foundation/Foundation.h>
 
+#define WeexLogLevel WeexLogLevel
+
 typedef NS_ENUM(NSInteger, WXLogFlag) {
     WXLogFlagError      = 1 << 0,
     WXLogFlagWarning    = 1 << 1,

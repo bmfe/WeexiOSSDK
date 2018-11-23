@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -33,6 +34,8 @@
 #import "NSObject+WXSwizzle.h"
 #import "WXComponent+Events.h"
 #import "WXRecyclerDragController.h"
+#import "WXComponent+Layout.h"
+#import "WXScrollerComponent+Layout.h"
 
 static NSString * const kCollectionCellReuseIdentifier = @"WXRecyclerCell";
 static NSString * const kCollectionHeaderReuseIdentifier = @"WXRecyclerHeader";
@@ -132,6 +135,12 @@ typedef enum : NSUInteger {
             WXMultiColumnLayout *layout = (WXMultiColumnLayout *)_collectionViewlayout;
             layout.columnWidth = [WXConvert WXLength:attributes[@"columnWidth"] isFloat:YES scaleFactor:scaleFactor] ? : [WXLength lengthWithFloat:0.0 type:WXLengthTypeAuto];
             layout.columnCount = [WXConvert WXLength:attributes[@"columnCount"] isFloat:NO scaleFactor:1.0] ? : [WXLength lengthWithInt:1 type:WXLengthTypeFixed];
+            if (attributes[@"leftGap"]) {
+                layout.leftGap = [WXConvert WXPixelType:attributes[@"leftGap"] scaleFactor:scaleFactor];
+            }
+            if (attributes[@"rightGap"]) {
+                layout.rightGap = [WXConvert WXPixelType:attributes[@"rightGap"] scaleFactor:scaleFactor];
+            }
             layout.columnGap = [self _floatValueForColumnGap:([WXConvert WXLength:attributes[@"columnGap"] isFloat:YES scaleFactor:scaleFactor] ? : [WXLength lengthWithFloat:0.0 type:WXLengthTypeNormal])];
             
             layout.delegate = self;
@@ -235,6 +244,12 @@ typedef enum : NSUInteger {
         if (attributes[@"columnGap"]) {
             layout.columnGap = [self _floatValueForColumnGap:([WXConvert WXLength:attributes[@"columnGap"] isFloat:YES scaleFactor:scaleFactor])];
             needUpdateLayout = YES;
+        }
+        if (attributes[@"leftGap"]) {
+            layout.leftGap = [WXConvert WXPixelType:attributes[@"leftGap"] scaleFactor:scaleFactor];
+        }
+        if (attributes[@"rightGap"]) {
+            layout.rightGap = [WXConvert WXPixelType:attributes[@"rightGap"] scaleFactor:scaleFactor];
         }
         
         if (needUpdateLayout) {
@@ -375,7 +390,7 @@ typedef enum : NSUInteger {
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
 {
-    WXLogDebug(@"section number:%zi", [self.dataController numberOfSections]);
+    WXLogDebug(@"section number:%li", (long)[self.dataController numberOfSections]);
     return [self.dataController numberOfSections];
 }
 
@@ -453,7 +468,7 @@ typedef enum : NSUInteger {
 
 - (CGFloat)collectionView:(UICollectionView *)collectionView contentWidthForLayout:(UICollectionViewLayout *)collectionViewLayout
 {
-    return self.scrollerCSSNode->style.dimensions[CSS_WIDTH];
+        return self.flexScrollerCSSNode->getStyleWidth();
 }
 
 - (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout heightForItemAtIndexPath:(NSIndexPath *)indexPath
@@ -624,11 +639,12 @@ typedef enum : NSUInteger {
 - (void)_fillPadding
 {
     UIEdgeInsets padding = {
-        WXFloorPixelValue(self.cssNode->style.padding[CSS_TOP] + self.cssNode->style.border[CSS_TOP]),
-        WXFloorPixelValue(self.cssNode->style.padding[CSS_LEFT] + self.cssNode->style.border[CSS_LEFT]),
-        WXFloorPixelValue(self.cssNode->style.padding[CSS_BOTTOM] + self.cssNode->style.border[CSS_BOTTOM]),
-        WXFloorPixelValue(self.cssNode->style.padding[CSS_RIGHT] + self.cssNode->style.border[CSS_RIGHT])
-    };
+            WXFloorPixelValue(self.flexCssNode->getPaddingTop() + self.flexCssNode->getBorderWidthTop()),
+            WXFloorPixelValue(self.flexCssNode->getPaddingLeft() + self.flexCssNode->getBorderWidthLeft()),
+            WXFloorPixelValue(self.flexCssNode->getPaddingBottom() + self.flexCssNode->getBorderWidthBottom()),
+            WXFloorPixelValue(self.flexCssNode->getPaddingRight() + self.flexCssNode->getBorderWidthRight())
+        };
+    
     
     if (!UIEdgeInsetsEqualToEdgeInsets(padding, _padding)) {
         _padding = padding;

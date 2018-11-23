@@ -19,6 +19,7 @@
 
 #import "WXHeaderComponent.h"
 #import "WXComponent_internal.h"
+#import "WXComponent+Layout.h"
 
 @implementation WXHeaderComponent
 {
@@ -68,19 +69,18 @@
 
 - (void)_calculateFrameWithSuperAbsolutePosition:(CGPoint)superAbsolutePosition gatherDirtyComponents:(NSMutableSet<WXComponent *> *)dirtyComponents
 {
-    if (self.delegate && (isUndefined(self.cssNode->style.dimensions[CSS_WIDTH]) || _isUseContainerWidth)) {
-        self.cssNode->style.dimensions[CSS_WIDTH] = [self.delegate headerWidthForLayout:self];
-        //TODO: set _isUseContainerWidth to NO if updateStyles have width
-        _isUseContainerWidth = YES;
-    }
-    
-    if ([self needsLayout]) {
-        layoutNode(self.cssNode, CSS_UNDEFINED, CSS_UNDEFINED, CSS_DIRECTION_INHERIT);
-        if ([WXLog logLevel] >= WeexLogLevelDebug) {
-            print_css_node(self.cssNode, CSS_PRINT_LAYOUT | CSS_PRINT_STYLE | CSS_PRINT_CHILDREN);
+        if (self.delegate && ( isnan(self.flexCssNode->getStyleWidth()) || _isUseContainerWidth)) {
+            self.flexCssNode->setStyleWidth([self.delegate headerWidthForLayout:self],NO);
+            //TODO: set _isUseContainerWidth to NO if updateStyles have width
+            _isUseContainerWidth = YES;
         }
-    }
-    
+        
+        if ([self needsLayout]) {
+            std::pair<float, float> renderPageSize;
+            renderPageSize.first = self.weexInstance.frame.size.width;
+            renderPageSize.second = self.weexInstance.frame.size.height;
+            self.flexCssNode->calculateLayout(renderPageSize);
+        }
     [super _calculateFrameWithSuperAbsolutePosition:superAbsolutePosition gatherDirtyComponents:dirtyComponents];
 }
 

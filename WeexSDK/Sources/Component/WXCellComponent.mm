@@ -23,6 +23,7 @@
 #import "WXListComponent.h"
 #import "WXComponent_internal.h"
 #import "WXDiffUtil.h"
+#import "WXComponent+Layout.h"
 
 @interface WXCellComponent ()
 
@@ -36,6 +37,10 @@
 
 - (instancetype)initWithRef:(NSString *)ref type:(NSString *)type styles:(NSDictionary *)styles attributes:(NSDictionary *)attributes events:(NSArray *)events weexInstance:(WXSDKInstance *)weexInstance
 {
+#ifdef DEBUG
+    WXLogDebug(@"flexLayout -> init Cell: ref:%@, styles:%@",ref,styles);
+#endif
+    
     self = [super initWithRef:ref type:type styles:styles attributes:attributes events:events weexInstance:weexInstance];
     
     if (self) {
@@ -46,6 +51,9 @@
         _keepScrollPosition = attributes[@"keepScrollPosition"] ? [WXConvert BOOL:attributes[@"keepScrollPosition"]] : NO;
         _lazyCreateView = YES;
         _isNeedJoinLayoutSystem = NO;
+        if (attributes[@"zIndex"]) {
+            _zIndex = [WXConvert NSString:attributes[@"zIndex"]];
+        }
     }
     
     return self;
@@ -123,19 +131,20 @@
 
 - (void)_calculateFrameWithSuperAbsolutePosition:(CGPoint)superAbsolutePosition gatherDirtyComponents:(NSMutableSet<WXComponent *> *)dirtyComponents
 {
-    if (self.delegate && (isUndefined(self.cssNode->style.dimensions[CSS_WIDTH]) || _isUseContainerWidth)) {
-        self.cssNode->style.dimensions[CSS_WIDTH] = [self.delegate containerWidthForLayout:self];
-        //TODO: set _isUseContainerWidth to NO if updateStyles have width
-        _isUseContainerWidth = YES;
-    }
-    
-    if ([self needsLayout]) {
-        layoutNode(self.cssNode, CSS_UNDEFINED, CSS_UNDEFINED, CSS_DIRECTION_INHERIT);
-        if ([WXLog logLevel] >= WeexLogLevelDebug) {
-            print_css_node(self.cssNode, CSS_PRINT_LAYOUT | CSS_PRINT_STYLE | CSS_PRINT_CHILDREN);
+        if (self.delegate && (flexIsUndefined(self.flexCssNode->getStyleWidth()) || _isUseContainerWidth)) {
+            self.flexCssNode->setStyleWidth([self.delegate containerWidthForLayout:self],NO);
+            _isUseContainerWidth = YES;
         }
-    }
-    
+        
+        if ([self needsLayout]) {
+            std::pair<float, float> renderPageSize;
+            renderPageSize.first = self.weexInstance.frame.size.width;
+            renderPageSize.second = self.weexInstance.frame.size.height;
+            self.flexCssNode->calculateLayout(renderPageSize);
+            if ([WXLog logLevel] >= WeexLogLevelDebug) {
+                
+            }
+        }
     [super _calculateFrameWithSuperAbsolutePosition:superAbsolutePosition gatherDirtyComponents:dirtyComponents];
 }
 @end

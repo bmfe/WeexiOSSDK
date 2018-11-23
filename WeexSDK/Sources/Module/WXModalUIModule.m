@@ -129,7 +129,7 @@ static const CGFloat WXToastDefaultPadding = 30.0;
 - (void)toast:(NSString *)message duration:(double)duration
 {
     WXAssertMainThread();
-    UIView *superView =  [[[UIApplication sharedApplication] windows] objectAtIndex:0];
+    UIView *superView = self.weexInstance.rootView.window;
     if (!superView) {
         superView =  self.weexInstance.rootView;
     }

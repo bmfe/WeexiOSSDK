@@ -32,6 +32,23 @@
 #import "WXBridgeManager.h"
 #import "WXSDKManager.h"
 #import "WXComponent+DataBinding.h"
+#import "WXComponent+Layout.h"
+
+@interface WXRecycleListComponentView:UICollectionView
+@end
+
+@implementation WXRecycleListComponentView
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+    if ([(id <WXScrollerProtocol>) self.wx_component respondsToSelector:@selector(requestGestureShouldStopPropagation:shouldReceiveTouch:)]) {
+        return [(id <WXScrollerProtocol>) self.wx_component requestGestureShouldStopPropagation:gestureRecognizer shouldReceiveTouch:touch];
+    }
+    else{
+        return YES;
+    }
+}
+
+@end
 
 @interface WXRecycleListComponent () <WXRecycleListLayoutDelegate, WXRecycleListUpdateDelegate, UICollectionViewDelegateFlowLayout, UICollectionViewDataSource>
 
@@ -87,7 +104,7 @@ WX_EXPORT_METHOD(@selector(setListData:))
 - (UIView *)loadView
 {
     WXRecycleListLayout *layout = [self recycleListLayout];
-    return [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+    return [[WXRecycleListComponentView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
 }
 
 - (void)viewDidLoad
@@ -417,7 +434,7 @@ WX_EXPORT_METHOD(@selector(setListData:))
     });
 #ifdef DEBUG
     double duration = -[startTime timeIntervalSinceNow] * 1000;
-    WXLogDebug(@"cell:%zi update data time:%f", indexPath.item, duration);
+    WXLogDebug(@"cell:%li update data time:%f", (long)indexPath.item, duration);
 #endif
     
     NSValue *cachedSize = _sizeCache[indexPath];
@@ -482,12 +499,18 @@ WX_EXPORT_METHOD(@selector(setListData:))
     // 1. get the data relating to the cell
     id data = [_dataManager dataAtIndex:indexPath.row];
     
-    // 2. get the template type specified by data
+    // 2. get the template type specified by data, and if template is not found, return an empty view of any template to avoid crash.
     NSString * templateType = [self templateType:indexPath];
     _templateManager.collectionView = collectionView;
-    if (!templateType) {
-        WXLogError(@"Each data should have a value for %@ to indicate template type", _templateSwitchKey);
-        return nil;
+    if (!templateType || (templateType && ![_templateManager isTemplateRegistered:templateType])) {
+        WXLogError(@"Template %@ not registered for collection view.", templateType);
+        UICollectionViewCell *cellView = [_collectionView dequeueReusableCellWithReuseIdentifier:[_templateManager anyRegisteredTemplate] forIndexPath:indexPath];
+        for (UIView *view in cellView.contentView.subviews) {
+            [view removeFromSuperview];
+        }
+        cellView.wx_component = nil;
+        [cellView setAccessibilityIdentifier:nil];
+        return cellView;
     }
     
     // 3. dequeue a cell component by template type
@@ -590,7 +613,7 @@ WX_EXPORT_METHOD(@selector(setListData:))
         return templateType;
     }
     
-    if (_templateSwitchKey &&data[_templateSwitchKey]){
+    if (_templateSwitchKey && data[_templateSwitchKey]){
         templateType = data[_templateSwitchKey];
     } else if (data[WXDefaultRecycleTemplateType]){
         // read the default type.

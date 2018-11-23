@@ -26,6 +26,7 @@
 #import "WXTransform.h"
 #import "WXTracingManager.h"
 #import "WXSDKManager.h"
+#import "WXComponent+Layout.h"
 
 #define WX_BOARD_RADIUS_RESET_ALL(key)\
 do {\
@@ -98,7 +99,7 @@ do {\
     if (subcomponent.displayType == WXDisplayTypeNone) {
         return;
     }
-    
+  
     WX_CHECK_COMPONENT_TYPE(self.componentType)
     if (subcomponent->_positionType == WXPositionTypeFixed) {
         [self.weexInstance.rootView addSubview:subcomponent.view];
@@ -250,14 +251,14 @@ do {\
         }
     }
     if (styles[@"transform"]) {
-        _transform = [[WXTransform alloc] initWithCSSValue:[WXConvert NSString:styles[@"transform"]] origin:[WXConvert NSString:self.styles[@"transformOrigin"]] instance:self.weexInstance];
+        id transformOrigin = styles[@"transformOrigin"] ?: self.styles[@"transformOrigin"];
+        WXTransform* transform = [[WXTransform alloc] initWithCSSValue:[WXConvert NSString:styles[@"transform"]] origin:[WXConvert NSString:transformOrigin] instance:self.weexInstance];
         if (!CGRectEqualToRect(self.calculatedFrame, CGRectZero)) {
-            [_transform applyTransformForView:_view];
+            [transform applyTransformForView:_view];
             [_layer setNeedsDisplay];
         }
-    }
-    
-    if (styles[@"transformOrigin"]) {
+        self.transform = transform;
+    }else if (styles[@"transformOrigin"]) {
         [_transform setTransformOrigin:[WXConvert NSString:styles[@"transformOrigin"]]];
         if (!CGRectEqualToRect(self.calculatedFrame, CGRectZero)) {
             [_transform applyTransformForView:_view];
@@ -329,7 +330,10 @@ do {\
         [subcomponents _unloadViewWithReusing:isReusing];
     }
     
-    [_view removeFromSuperview];
+    if ([_view superview]) {
+        [_view removeFromSuperview];
+    }
+    
     if (self->_isTemplate && self.attributes[@"@templateId"]) {
         [[WXSDKManager bridgeMgr] callComponentHook:self.weexInstance.instanceId componentId:self.attributes[@"@templateId"] type:@"lifecycle" hook:@"detach" args:nil competion:nil];
     }

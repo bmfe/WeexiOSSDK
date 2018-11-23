@@ -3,7 +3,7 @@ Pod::Spec.new do |s|
 
   s.name         = "WeexSDK"
 
-  s.version      = "0.18.0"
+  s.version      = "0.19.0"
 
   s.summary      = "WeexSDK Source ."
 
@@ -27,12 +27,14 @@ Pod::Spec.new do |s|
   s.platform     = :ios
   s.ios.deployment_target = '8.0'
   s.source       = { :git => "https://github.com/bmfe/WeexiOSSDK.git", :tag => s.version.to_s }
-  s.source_files = 'WeexSDK/Sources/**/*.{h,m,mm,c}'
+  s.source_files = 'WeexSDK/Sources/**/*.{h,m,mm,c,cpp}'
   s.resources = 'WeexSDK/Resources/native-bundle-main.js', 'WeexSDK/Resources/wx_load_error@3x.png'
 
   s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => "'$(PODS_ROOT)/WeexSDK'" }
   s.requires_arc = true
   s.prefix_header_file = 'WeexSDK/Sources/Supporting Files/WeexSDK-Prefix.pch'
+  s.private_header_files = 'WeexSDK/Sources/Component/RecycleList/WXJSASTParser.h',
+                           'WeexSDK/Sources/Layout/WXScrollerComponent+Layout.h'
 
   s.xcconfig = { "OTHER_LINK_FLAG" => '$(inherited) -ObjC'}
 

@@ -23,7 +23,7 @@
 #import "WXSDKInstance_private.h"
 #import "WXConvert.h"
 #import "WXAssert.h"
-#import "WXScrollerComponent.h"
+#import "WXScrollerComponent+Layout.h"
 
 @implementation WXCellSlotComponent
 
@@ -40,7 +40,7 @@
         if (attributes[@"default"]) {
             _templateCaseType = @"default";
         }
-        _templateCaseType = attributes[@"case"] ? [WXConvert NSString:attributes[@"case"]] : WXDefaultRecycleTemplateType;
+        _templateCaseType = attributes[@"case"] ? [WXConvert NSString:attributes[@"case"]] :const_cast<NSString *>(WXDefaultRecycleTemplateType) ;
         _lazyCreateView = YES;
         _isNeedJoinLayoutSystem = NO;
     }
@@ -69,18 +69,20 @@
 - (void)triggerLayout
 {
     WXAssertComponentThread();
-    
-    //TODO: _isUseContainerWidth?
-    if (isUndefined(self.cssNode->style.dimensions[CSS_WIDTH])) {
-        self.cssNode->style.dimensions[CSS_WIDTH] = ((WXScrollerComponent *)(self.supercomponent)).scrollerCSSNode->style.dimensions[CSS_WIDTH];
-    }
-    
-    if ([self needsLayout]) {
-        layoutNode(self.cssNode, CSS_UNDEFINED, CSS_UNDEFINED, CSS_DIRECTION_INHERIT);
-        if ([WXLog logLevel] >= WeexLogLevelDebug) {
-            print_css_node(self.cssNode, CSS_PRINT_LAYOUT | CSS_PRINT_STYLE | CSS_PRINT_CHILDREN);
+
+        if (flexIsUndefined(self.flexCssNode->getStyleWidth())) {
+            self.flexCssNode->setStyleWidth(((WXScrollerComponent *)(self.supercomponent)).flexScrollerCSSNode->getStyleWidth(),NO);
         }
-    }
+        
+        if ([self needsLayout]) {
+            std::pair<float, float> renderPageSize;
+            renderPageSize.first = self.weexInstance.frame.size.width;
+            renderPageSize.second = self.weexInstance.frame.size.height;
+            self.flexCssNode->calculateLayout(renderPageSize);
+            if ([WXLog logLevel] >= WeexLogLevelDebug) {
+                
+            }
+        }
     
     NSMutableSet<WXComponent *> *dirtyComponents = [NSMutableSet set];
     [self _calculateFrameWithSuperAbsolutePosition:CGPointZero gatherDirtyComponents:dirtyComponents];

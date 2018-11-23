@@ -27,6 +27,7 @@
 #import "WXComponent_internal.h"
 #import "WXComponent+PseudoClassManagement.h"
 #import "WXTextInputComponent.h"
+#import "WXComponent+Layout.h"
 
 @interface WXEditComponent()
 
@@ -68,6 +69,9 @@
 @property (nonatomic, strong) NSString * recoverRule;
 @property (nonatomic, strong) NSString * recoverReplace;
 @property (nonatomic, strong) NSDictionary * formaterData;
+
+// disable move rootView up as the keyboard show up.
+@property (nonatomic, assign) BOOL disableMoveViewUp;
 
 @end
 
@@ -117,6 +121,9 @@ WX_EXPORT_METHOD(@selector(setTextFormatter:))
         
         if (attributes[@"hideDoneButton"]) {
             _hideDoneButton = [attributes[@"hideDoneButton"] boolValue];
+        }
+        if (attributes[@"disableMoveViewUp"]) {
+            _disableMoveViewUp = [WXConvert BOOL:attributes[@"disableMoveViewUp"]];
         }
         
         // handle styles
@@ -406,6 +413,10 @@ WX_EXPORT_METHOD(@selector(setTextFormatter:))
     if (attributes[@"maxlength"]) {
         _maxLength = [NSNumber numberWithInteger:[attributes[@"maxlength"] integerValue]];
     }
+    
+    if (attributes[@"disableMoveViewUp"]) {
+        _disableMoveViewUp = [WXConvert BOOL:attributes[@"disableMoveViewUp"]];
+    }
     if (attributes[@"value"]) {
         _value = [WXConvert NSString:attributes[@"value"]]?:@"";
         if (_maxLength && [_value length] > [_maxLength integerValue]&& [_maxLength integerValue] >= 0) {
@@ -470,15 +481,26 @@ WX_EXPORT_METHOD(@selector(setTextFormatter:))
 
 -(void)updatePattern
 {
-    UIEdgeInsets padding = UIEdgeInsetsMake(self.cssNode->style.padding[CSS_TOP], self.cssNode->style.padding[CSS_LEFT], self.cssNode->style.padding[CSS_BOTTOM], self.cssNode->style.padding[CSS_RIGHT]);
-    if (!UIEdgeInsetsEqualToEdgeInsets(padding, _padding)) {
-        [self setPadding:padding];
-    }
-    
-    UIEdgeInsets border = UIEdgeInsetsMake(self.cssNode->style.border[CSS_TOP], self.cssNode->style.border[CSS_LEFT], self.cssNode->style.border[CSS_BOTTOM], self.cssNode->style.border[CSS_RIGHT]);
-    if (!UIEdgeInsetsEqualToEdgeInsets(border, _border)) {
-        [self setBorder:border];
-    }
+        UIEdgeInsets padding_flex = UIEdgeInsetsMake(
+                                                     self.flexCssNode->getPaddingTop(),
+                                                     self.flexCssNode->getPaddingLeft(),
+                                                     self.flexCssNode->getPaddingBottom(),
+                                                     self.flexCssNode->getPaddingRight()
+                                                     );
+        
+        if (!UIEdgeInsetsEqualToEdgeInsets(padding_flex, _padding)) {
+            [self setPadding:padding_flex];
+        }
+        
+        
+        UIEdgeInsets border_flex = UIEdgeInsetsMake(self.flexCssNode->getBorderWidthTop(), self.flexCssNode->getBorderWidthLeft(), self.flexCssNode->getBorderWidthBottom(), self.flexCssNode->getBorderWidthRight());
+        
+        
+        
+        
+        if (!UIEdgeInsetsEqualToEdgeInsets(border_flex, _border)) {
+            [self setBorder:border_flex];
+        }
 }
 
 - (CGSize (^)(CGSize))measureBlock
@@ -487,23 +509,21 @@ WX_EXPORT_METHOD(@selector(setTextFormatter:))
     return ^CGSize (CGSize constrainedSize) {
         
         CGSize computedSize = [[[NSString alloc] init]sizeWithAttributes:nil];
-        //TODO:more elegant way to use max and min constrained size
-        if (!isnan(weakSelf.cssNode->style.minDimensions[CSS_WIDTH])) {
-            computedSize.width = MAX(computedSize.width, weakSelf.cssNode->style.minDimensions[CSS_WIDTH]);
-        }
-        
-        if (!isnan(weakSelf.cssNode->style.maxDimensions[CSS_WIDTH])) {
-            computedSize.width = MIN(computedSize.width, weakSelf.cssNode->style.maxDimensions[CSS_WIDTH]);
-        }
-        
-        if (!isnan(weakSelf.cssNode->style.minDimensions[CSS_HEIGHT])) {
-            computedSize.height = MAX(computedSize.height, weakSelf.cssNode->style.minDimensions[CSS_HEIGHT]);
-        }
-        
-        if (!isnan(weakSelf.cssNode->style.maxDimensions[CSS_HEIGHT])) {
-            computedSize.height = MIN(computedSize.height, weakSelf.cssNode->style.maxDimensions[CSS_HEIGHT]);
-        }
-        
+            if (!isnan(weakSelf.flexCssNode->getMinWidth())) {
+                computedSize.width = MAX(computedSize.width, weakSelf.flexCssNode->getMinWidth());
+            }
+            
+            if (!isnan(weakSelf.flexCssNode->getMaxWidth())) {
+                computedSize.width = MIN(computedSize.width, weakSelf.flexCssNode->getMaxWidth());
+            }
+            
+            if (!isnan(weakSelf.flexCssNode->getMinHeight())) {
+                computedSize.height = MAX(computedSize.height, weakSelf.flexCssNode->getMinHeight());
+            }
+            
+            if (!isnan(weakSelf.flexCssNode->getMaxHeight())) {
+                computedSize.height = MIN(computedSize.height, weakSelf.flexCssNode->getMaxHeight());
+            }
         return (CGSize) {
             WXCeilPixelValue(computedSize.width),
             WXCeilPixelValue(computedSize.height)
@@ -849,19 +869,21 @@ WX_EXPORT_METHOD(@selector(setTextFormatter:))
     if(![self.view isFirstResponder]) {
         return;
     }
-    CGRect end = [[[notification userInfo] objectForKey:@"UIKeyboardFrameEndUserInfoKey"] CGRectValue];
-    _keyboardSize = end.size;
-    UIView * rootView = self.weexInstance.rootView;
-    CGRect screenRect = [[UIScreen mainScreen] bounds];
-    CGRect keyboardRect = (CGRect){
-        .origin.x = 0,
-        .origin.y = CGRectGetMaxY(screenRect) - _keyboardSize.height - 54,
-        .size = _keyboardSize
-    };
-    CGRect inputFrame = [self.view.superview convertRect:self.view.frame toView:rootView];
-    if (keyboardRect.origin.y - inputFrame.size.height <= inputFrame.origin.y) {
-        [self setViewMovedUp:YES];
-        self.weexInstance.isRootViewFrozen = YES;
+    if (!_disableMoveViewUp) {
+        CGRect end = [[[notification userInfo] objectForKey:@"UIKeyboardFrameEndUserInfoKey"] CGRectValue];
+        _keyboardSize = end.size;
+        UIView * rootView = self.weexInstance.rootView;
+        CGRect screenRect = [[UIScreen mainScreen] bounds];
+        CGRect keyboardRect = (CGRect){
+            .origin.x = 0,
+            .origin.y = CGRectGetMaxY(screenRect) - _keyboardSize.height - 54,
+            .size = _keyboardSize
+        };
+        CGRect inputFrame = [self.view.superview convertRect:self.view.frame toView:rootView];
+        if (keyboardRect.origin.y - inputFrame.size.height <= inputFrame.origin.y) {
+            [self setViewMovedUp:YES];
+            self.weexInstance.isRootViewFrozen = YES;
+        }
     }
     
     if (_keyboardEvent) {
@@ -874,10 +896,12 @@ WX_EXPORT_METHOD(@selector(setTextFormatter:))
     if (![self.view isFirstResponder]) {
         return;
     }
-    UIView * rootView = self.weexInstance.rootView;
-    if (!CGRectEqualToRect(self.weexInstance.frame, rootView.frame)) {
-        [self setViewMovedUp:NO];
-        self.weexInstance.isRootViewFrozen = NO;
+    if (!_disableMoveViewUp) {
+        UIView * rootView = self.weexInstance.rootView;
+        if (!CGRectEqualToRect(self.weexInstance.frame, rootView.frame)) {
+            [self setViewMovedUp:NO];
+            self.weexInstance.isRootViewFrozen = NO;
+        }
     }
     if (_keyboardEvent) {
         [self fireEvent:@"keyboard" params:@{ @"isShow": @NO }];
