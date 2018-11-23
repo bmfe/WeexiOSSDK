@@ -28,7 +28,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '8.0'
   s.source       = { :git => "https://github.com/bmfe/WeexiOSSDK.git", :tag => s.version.to_s }
   s.source_files = 'WeexSDK/Sources/**/*.{h,m,mm,c,cpp}'
-  s.resources = 'WeexSDK/Resources/native-bundle-main.js', 'WeexSDK/Resources/wx_load_error@3x.png'
+  s.resources = 'WeexSDK/Resources/*.js', 'WeexSDK/Resources/wx_load_error@3x.png'
 
   s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => "'$(PODS_ROOT)/WeexSDK'" }
   s.requires_arc = true
